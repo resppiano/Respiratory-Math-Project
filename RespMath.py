@@ -40,126 +40,31 @@ def calculate_oxygen_percentage(flow_rate_lpm):
     return estimated_percentage, device
 
 def main():
-    st.set_page_config(
-        page_title="RT Oxygen Calculator",
-        page_icon="🫁",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
-    # Add custom CSS
-    st.markdown("""
-        <style>
-        .main-header {
-            font-size: 2.5rem;
-            color: #0066cc;
-            text-align: center;
-        }
-        .subheader {
-            font-size: 1.5rem;
-            color: #444;
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .result-container {
-            background-color: #f0f8ff;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-        .device-info {
-            margin-top: 15px;
-            padding: 10px;
-            background-color: #e6f2ff;
-            border-left: 5px solid #0066cc;
-        }
-        .disclaimer {
-            font-size: 0.8rem;
-            font-style: italic;
-            margin-top: 30px;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+    """Main application entry point."""
+    setup_page_config()
     
     # App Header
-    st.markdown("<h1 class='main-header'>Respiratory Therapy Oxygen Calculator</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='subheader'>Convert Flow Rate (LPM) to Approximate O₂ Percentage</p>", unsafe_allow_html=True)
+    st.markdown("<h1 class='main-header'>Respiratory Therapy Oxygen Calculator</h1>", 
+                unsafe_allow_html=True)
+    st.markdown("<p class='subheader'>Convert Flow Rate (LPM) to Approximate O₂ Percentage</p>", 
+                unsafe_allow_html=True)
     
-    # Create sidebar for input controls
-    with st.sidebar:
-        st.header("Input Parameters")
-        
-        # Flow rate input with slider and number input
-        st.subheader("Flow Rate")
-        flow_rate = st.slider("Select Flow Rate (LPM)", 
-                              min_value=0.0, 
-                              max_value=20.0, 
-                              value=2.0,
-                              step=0.5)
-        
-        # Alternative precise input
-        precise_flow = st.number_input("Or enter exact value (LPM)", 
-                                       min_value=0.0,
-                                       max_value=50.0,
-                                       value=flow_rate,
-                                       step=0.1)
-        
-        # Use the precise flow if it differs from slider
-        if precise_flow != flow_rate:
-            flow_rate = precise_flow
-        
-        st.divider()
-        
-        # Reference Information
-        st.subheader("Quick Reference")
-        st.markdown("""
-        **Common Devices & Flow Rates:**
-        - Nasal Cannula: 1-6 LPM
-        - Simple Mask: 5-10 LPM
-        - Non-rebreather: 10-15 LPM
-        - High Flow Systems: 15+ LPM
-        
-        **Formula Used:**
-        - Room air: 21% O₂
-        - Each 1 LPM (nasal cannula) adds ~4% O₂
-        """)
+    # Get flow rate from sidebar
+    flow_rate = render_sidebar()
     
     # Main content area
     col1, col2 = st.columns([3, 2])
     
     with col1:
-        # Calculate the oxygen percentage
+        # Calculate and display results
         o2_percentage, device = calculate_oxygen_percentage(flow_rate)
         
-        # Display results
         st.markdown("<div class='result-container'>", unsafe_allow_html=True)
-        
         st.subheader("Results")
         st.markdown(f"### For flow rate of {flow_rate:.1f} LPM:")
         
-        # Use gauge chart for visual representation
-        fig, ax = plt.subplots(figsize=(8, 4))
-        
-        # Create gauge chart
-        gauge_range = np.linspace(0, 100, 100)
-        ax.barh([0], [100], color='lightgray', height=0.5)
-        ax.barh([0], [o2_percentage], color='#0066cc', height=0.5)
-        
-        # Setting y-axis properties
-        ax.set_yticks([])
-        ax.set_xlim(0, 100)
-        ax.set_xticks([0, 21, 40, 60, 80, 100])
-        ax.set_xticklabels(['0%', '21%\n(Room Air)', '40%', '60%', '80%', '100%'])
-        
-        # Add the actual percentage as text
-        ax.text(o2_percentage, 0, f"{o2_percentage:.1f}%", 
-                ha='center', va='center', fontsize=14, 
-                fontweight='bold', color='white',
-                bbox=dict(facecolor='#0066cc', alpha=0.8, boxstyle='round,pad=0.5'))
-        
-        ax.set_title(f"Approximate O₂ Percentage", fontsize=14)
-        ax.grid(axis='x', linestyle='--', alpha=0.7)
-        plt.tight_layout()
+        # Display gauge chart
+        fig = create_gauge_chart(o2_percentage)
         st.pyplot(fig)
         
         # Device info
@@ -167,29 +72,21 @@ def main():
         st.markdown(f"**Recommended Delivery Device:** {device}")
         st.markdown("</div>", unsafe_allow_html=True)
         
-        st.markdown("<p class='disclaimer'>Note: Actual delivered O₂ percentage may vary based on patient factors including respiratory rate, tidal volume, mouth breathing, and device fitting.</p>", unsafe_allow_html=True)
+        st.markdown(
+            "<p class='disclaimer'>Note: Actual delivered O₂ percentage may vary based on "
+            "patient factors including respiratory rate, tidal volume, mouth breathing, "
+            "and device fitting.</p>", 
+            unsafe_allow_html=True
+        )
         st.markdown("</div>", unsafe_allow_html=True)
     
     with col2:
-        # Show a table of common values
+        # Show reference table
         st.subheader("Reference Table")
-        
-        # Generate data for the table
-        flow_values = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15]
-        table_data = []
-        
-        for flow in flow_values:
-            percentage, dev = calculate_oxygen_percentage(flow)
-            table_data.append({
-                "Flow Rate (LPM)": flow,
-                "O₂ %": f"{percentage:.1f}%",
-                "Device": dev.split(" (")[0]  # Simplify device name for table
-            })
-        
-        df = pd.DataFrame(table_data)
+        df = generate_reference_table()
         st.table(df)
         
-        # Educational information
+        # Clinical considerations
         st.subheader("Clinical Considerations")
         st.info("""
         **When selecting oxygen flow rates:**
