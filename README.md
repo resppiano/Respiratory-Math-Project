@@ -21,4 +21,4 @@ python RespMath.py
 Feel free to submit issues and enhancement requests.
 
 ## License
-[Add your chosen license here]
+MIT
